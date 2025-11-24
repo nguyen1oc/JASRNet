@@ -34,51 +34,76 @@ class Trainer():
         self.loss.step()
         epoch = self.optimizer.get_last_epoch() + 1
         lr = self.optimizer.get_lr()
-
-        self.ckp.write_log('=> Total params: %.2fM' % (sum(p.numel() for p in self.model.parameters()) / (1024. * 1024)))
+    
+        self.ckp.write_log(
+            '=> Total params: %.2fM' % (sum(p.numel() for p in self.model.parameters()) / (1024. * 1024))
+        )
         self.ckp.write_log(
             '[Epoch {}]\tLearning rate: {:.2e}'.format(epoch, Decimal(lr))
         )
         self.loss.start_log()
         self.model.train()
-
+    
         timer_data, timer_model = utility.timer(), utility.timer()
-        for batch, (lr, hr, lr_large, heatmaps, mask, pts, _, _, idx_scale) in enumerate(self.loader_train):
-            lr, hr, heatmaps, lr_large, mask, pts = self.prepare(lr, hr, heatmaps, lr_large, mask, pts)
+    
+        for batch, batch_data in enumerate(self.loader_train):
+            # Debug: in ra số phần tử batch_data
+            print(f"Batch {batch}: len(batch_data) = {len(batch_data)}")
+            
+            # Nếu batch_data là tuple/list chứa 8 phần tử như dataset trả ra
+            if len(batch_data) == 8:
+                lr, hr, lr_large, heatmaps, mask, pts, filename, facebb = batch_data
+            else:
+                # Nếu không, debug chi tiết
+                print("Unexpected batch_data format:", batch_data)
+                continue  # bỏ batch này để không crash
+    
+            # Chuyển về device
+            lr, hr, lr_large, heatmaps, mask = self.prepare(lr, hr, lr_large, heatmaps, mask)
+    
+            # Lấy idx_scale từ dataset
+            idx_scale = getattr(self.loader_train.dataset, "idx_scale", 0)
+    
             timer_data.hold()
             timer_model.tic()
-            
+    
             #################### start training ####################
             self.optimizer.zero_grad()
-
-            ## both
-            sr, batch_heatmaps = self.model(lr_large, idx_scale)      
-
+    
+            # Forward pass
+            sr, batch_heatmaps = self.model(lr_large, idx_scale)
+    
+            # Tính loss
             loss = self.loss(sr=sr, hr=hr, output=batch_heatmaps, target=heatmaps, mask=mask)
-            
             loss.backward()
-
+    
+            # Gradient clip nếu cần
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
                     self.model.parameters(),
                     self.args.gclip
                 )
-
+    
             self.optimizer.step()
             timer_model.hold()
-
+    
+            # Log
             if (batch + 1) % self.args.print_every == 0:
-                self.ckp.write_log('[{}/{}]\t{}\t{:.1f}+{:.1f}s'.format(
-                    (batch + 1) * self.args.batch_size,
-                    len(self.loader_train.dataset),
-                    self.loss.display_loss(batch),
-                    timer_model.release(),
-                    timer_data.release()))
-
+                self.ckp.write_log(
+                    '[{}/{}]\t{}\t{:.1f}+{:.1f}s'.format(
+                        (batch + 1) * self.args.batch_size,
+                        len(self.loader_train.dataset),
+                        self.loss.display_loss(batch),
+                        timer_model.release(),
+                        timer_data.release()
+                    )
+                )
+    
             timer_data.tic()
-
+    
         self.loss.end_log(len(self.loader_train))
         self.error_last = self.loss.log[-1, -1]
+
 
     def test(self):
         torch.set_grad_enabled(False)
@@ -182,4 +207,5 @@ class Trainer():
         else:
             epoch = self.optimizer.get_last_epoch() + 1
             return epoch >= self.args.epochs
+
 
