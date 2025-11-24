@@ -115,15 +115,21 @@ class checkpoint():
         self.log_file.close()
 
     def plot_psnr(self, epoch):
-        axis = np.linspace(1, epoch, epoch)
+        if self.log.numel() == 0:  # hoặc self.log_psnr.numel() == 0
+            return
+    
+        current_epoch = min(epoch, self.log.size(0))
+        axis = np.linspace(1, current_epoch, current_epoch)
         for idx_data, d in enumerate(self.args.data_test):
             label = 'SR on {}'.format(d)
             fig = plt.figure()
             plt.title(label)
             for idx_scale, scale in enumerate(self.args.scale):
+                if self.log.size(0) < current_epoch:
+                    continue  # tránh lỗi nếu log chưa đủ
                 plt.plot(
                     axis,
-                    self.log[:, idx_data, idx_scale].numpy(),
+                    self.log[:current_epoch, idx_data, idx_scale].numpy(),
                     label='Scale {}'.format(scale)
                 )
             plt.legend()
@@ -133,24 +139,33 @@ class checkpoint():
             plt.savefig(self.get_path('test_psnr_{}.pdf'.format(d)))
             plt.close(fig)
 
+
+
     def plot_nme(self, epoch):
-        axis = np.linspace(1, epoch, epoch)
+        if self.log.numel() == 0:  # hoặc self.log_psnr.numel() == 0
+            return
+    
+        current_epoch = min(epoch, self.log.size(0))
+        axis = np.linspace(1, current_epoch, current_epoch)
+    
         for idx_data, d in enumerate(self.args.data_test):
             label = 'Face Alignment on {}'.format(d)
             fig = plt.figure()
             plt.title(label)
-            for idx_scale, scale in enumerate(self.args.scale):
-                plt.plot(
-                    axis,
-                    self.log[:, idx_data, idx_scale].numpy(),
-                    label='Scale {}'.format(scale)
-                )
+    
+            plt.plot(
+                axis,
+                self.log[:, idx_data, 0].numpy(),  # NME ở channel 0
+                label='NME'
+            )
+    
             plt.legend()
             plt.xlabel('Epochs')
             plt.ylabel('NME')
             plt.grid(True)
             plt.savefig(self.get_path('test_nme_{}.pdf'.format(d)))
             plt.close(fig)
+
 
     def begin_background(self):
         self.queue = Queue()
@@ -472,5 +487,6 @@ def calc_nme(args, pts, batch_heatmaps, mask, hr_np, facebb, filename, sr):
     return nme*100
 
                 
+
 
 
