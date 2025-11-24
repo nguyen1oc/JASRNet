@@ -115,23 +115,26 @@ class checkpoint():
         self.log_file.close()
 
     def plot_psnr(self, epoch):
-        current_epoch = self.log_psnr.size(0)  # số epoch thực tế đã log
-        axis = np.linspace(1, current_epoch, current_epoch)
-        for i, d in enumerate(self.loader_test):
+        axis = np.linspace(1, epoch, epoch)
+        for idx_data, d in enumerate(self.args.data_test):
+            label = 'SR on {}'.format(d)
             fig = plt.figure()
-            plt.title('PSNR - {}'.format(d.dataset.name))
-            plt.plot(axis, self.log_psnr[:current_epoch, i, 1].cpu().numpy(), label='PSNR')
+            plt.title(label)
+            for idx_scale, scale in enumerate(self.args.scale):
+                plt.plot(
+                    axis,
+                    self.log[:, idx_data, idx_scale].numpy(),
+                    label='Scale {}'.format(scale)
+                )
             plt.legend()
             plt.xlabel('Epochs')
             plt.ylabel('PSNR')
             plt.grid(True)
-            plt.savefig(os.path.join(self.dir, 'psnr_{}.pdf'.format(d.dataset.name)))
+            plt.savefig(self.get_path('test_psnr_{}.pdf'.format(d)))
             plt.close(fig)
 
-
     def plot_nme(self, epoch):
-        current_epoch = self.log.size(0)  # số epoch thực tế đã log
-        axis = np.linspace(1, current_epoch, current_epoch)
+        axis = np.linspace(1, epoch, epoch)
         for idx_data, d in enumerate(self.args.data_test):
             label = 'Face Alignment on {}'.format(d)
             fig = plt.figure()
@@ -139,7 +142,7 @@ class checkpoint():
             for idx_scale, scale in enumerate(self.args.scale):
                 plt.plot(
                     axis,
-                    self.log[:current_epoch, idx_data, idx_scale].cpu().numpy(),
+                    self.log[:, idx_data, idx_scale].numpy(),
                     label='Scale {}'.format(scale)
                 )
             plt.legend()
@@ -148,7 +151,6 @@ class checkpoint():
             plt.grid(True)
             plt.savefig(self.get_path('test_nme_{}.pdf'.format(d)))
             plt.close(fig)
-
 
     def begin_background(self):
         self.queue = Queue()
@@ -470,7 +472,5 @@ def calc_nme(args, pts, batch_heatmaps, mask, hr_np, facebb, filename, sr):
     return nme*100
 
                 
-
-
 
 
