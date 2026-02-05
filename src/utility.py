@@ -409,8 +409,15 @@ def evaluate_normalized_mean_error(predictions, groundtruth, facebb=None):
         detected_points = predictions
         ground_truth_points = groundtruth
         if num_points == 68:
-            interocular_distance = np.linalg.norm(ground_truth_points[:2, 36] - ground_truth_points[:2, 45])
-            assert bool(ground_truth_points[2,36]) and bool(ground_truth_points[2,45])
+            if bool(ground_truth_points[2,36]) and bool(ground_truth_points[2,45]):
+                interocular_distance = np.linalg.norm(
+                    ground_truth_points[:2, 36] - ground_truth_points[:2, 45]
+                )
+            else:
+                # fallback: dùng bbox
+                W = facebb[2] - facebb[0]
+                H = facebb[3] - facebb[1]
+                interocular_distance = np.sqrt(W * H)
         elif num_points == 51 or num_points == 49:
             interocular_distance = np.linalg.norm(ground_truth_points[:2, 19] - ground_truth_points[:2, 28])
             assert bool(ground_truth_points[2,19]) and bool(ground_truth_points[2,28])
@@ -476,8 +483,8 @@ def calc_nme(args, pts, batch_heatmaps, mask, hr_np, facebb, filename, sr):
     np_batch_locs, np_batch_scos = batch_locs.detach().cpu().numpy(), batch_scos.detach().cpu().numpy()    
 
     for i in range(len(np_batch_locs)):
-        locations = np_batch_locs[ibatch,:-1,:]
-        scores = np.expand_dims(np_batch_scos[ibatch,:-1], -1)
+        locations = np_batch_locs[i, :-1, :]
+        scores = np.expand_dims(np_batch_scos[i, :-1], -1)
         
         prediction = np.concatenate((locations, scores), axis=1).transpose(1,0)
         groundtruth = pts[i].numpy()
@@ -487,6 +494,7 @@ def calc_nme(args, pts, batch_heatmaps, mask, hr_np, facebb, filename, sr):
     return nme*100
 
                 
+
 
 
 
