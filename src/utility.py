@@ -454,7 +454,7 @@ def evaluate_normalized_mean_error(predictions, groundtruth, facebb=None):
                 pts_sum = pts_sum + 1
 
         if pts_sum == 0 or interocular_distance <= 1e-6:
-            error_per_image = np.array([np.nan])
+            return np.nan, 0, []
         else:
             error_per_image = dis_sum / (pts_sum * interocular_distance)
 
@@ -511,10 +511,16 @@ def calc_nme(args, pts, batch_heatmaps, mask, hr_np, facebb, filename, sr):
         groundtruth = pts[i].numpy()
 
         facebb = facebb[0].numpy()
-        nme, accuracy_under_008, _ = evaluate_normalized_mean_error(prediction, groundtruth, facebb)
+        nme, accuracy_under_008, _ = evaluate_normalized_mean_error(
+            prediction, groundtruth, facebb
+        )
+        
+        if np.isnan(nme):
+            return 0
     return nme*100
 
                 
+
 
 
 
