@@ -393,8 +393,12 @@ def find_tensor_peak_batch(heatmap, downsample, threshold = 0.000001):
     # extract the sub-region heatmap
     theta = affine_parameter.to(heatmap.device)
     grid_size = torch.Size([num_pts, 1, radius*2+1, radius*2+1])
-    grid = F.affine_grid(theta, grid_size)
-    sub_feature = F.grid_sample(heatmap.unsqueeze(1), grid).squeeze(1)
+    grid = F.affine_grid(theta, grid_size, align_corners=False)
+    sub_feature = F.grid_sample(
+        heatmap.unsqueeze(1),
+        grid,
+        align_corners=False
+    )
     sub_feature = F.threshold(sub_feature, threshold, np.finfo(float).eps)
 
     X = torch.arange(-radius, radius+1).to(heatmap).view(1, 1, radius*2+1)
@@ -511,6 +515,7 @@ def calc_nme(args, pts, batch_heatmaps, mask, hr_np, facebb, filename, sr):
     return nme*100
 
                 
+
 
 
 
