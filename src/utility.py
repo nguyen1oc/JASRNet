@@ -249,9 +249,23 @@ def calc_psnr(sr, hr, scale, rgb_range, dataset=None, facebb=[]):
     image2 = convert_rgb_to_y(hr)
     image1 = image1[y1:y2, x1:x2, :]
     image2 = image2[y1:y2, x1:x2, :]
+    
     psnr = compare_psnr(image1, image2, data_range=rgb_range)
-    ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
-                        sigma=1.5, data_range=rgb_range)
+    
+    h, w = image1.shape[:2]
+    if h < 11 or w < 11:
+        ssim = 0
+    else:
+        ssim = compare_ssim(
+            image1, image2,
+            win_size=11,
+            gaussian_weights=True,
+            multichannel=True,
+            K1=0.01, K2=0.03,
+            sigma=1.5,
+            data_range=rgb_range
+        )
+
 
     return psnr, ssim
 
@@ -435,7 +449,10 @@ def evaluate_normalized_mean_error(predictions, groundtruth, facebb=None):
                 dis_sum = dis_sum + np.linalg.norm(detected_points[:2, j] - ground_truth_points[:2, j])
                 pts_sum = pts_sum + 1
 
-        error_per_image = dis_sum / (pts_sum*interocular_distance)
+        if pts_sum == 0 or interocular_distance <= 1e-6:
+            error_per_image = np.array([np.nan])
+        else:
+            error_per_image = dis_sum / (pts_sum * interocular_distance)
 
     # normalise_mean_error = error_per_image.mean()
     normalise_mean_error = error_per_image
@@ -494,6 +511,7 @@ def calc_nme(args, pts, batch_heatmaps, mask, hr_np, facebb, filename, sr):
     return nme*100
 
                 
+
 
 
 
